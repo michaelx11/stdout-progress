@@ -40,11 +40,18 @@ testSink prefix = C.mapM_ (putStrLn . (prefix ++))
 lengthMap :: (Monad m) => Conduit String m Int
 lengthMap = C.map length
 
--- lengthReduction :: (Monad m) => Conduit String m Int
--- lengthReduction = C.fold length
+lengthSum :: (Monad m) => Conduit Int m String
+lengthSum = do
+    let loop currSum = do
+            item <- await
+            case item of
+                Nothing -> yield ("Total Bytes: " ++ (show currSum))
+                Just val -> do
+                    loop $ currSum + val
+    loop 0 
 
-lengthSink :: Sink Int IO ()
-lengthSink = C.mapM_ (putStrLn . show)
+lengthSink :: Sink String IO ()
+lengthSink = C.mapM_ putStrLn
 
 -- | An example that produces indexed output.
 testSource :: (Monad m) => Source m (String)
@@ -66,7 +73,7 @@ main = do
 
     testSource
       $$ countLoop
-      =$ multiSink_ [(testSink "orig:"), (lengthMap $= lengthSink)]
+      =$ multiSink_ [(testSink "orig:"), (lengthMap $= lengthSum $= lengthSink)]
 -- main = getArgs >>= parse 
 -- 
 -- parse ["-h"] = usage   >> exit
