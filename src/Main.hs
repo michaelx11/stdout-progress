@@ -4,7 +4,8 @@ import           Control.Concurrent.Async (Concurrently (..))
 import           Data.Conduit             as C
 import qualified Data.Conduit.Binary      as CB
 import qualified Data.Conduit.List        as CL
-import 					 Data.ByteString.Internal
+import            Data.ByteString.Internal
+import           Data.ByteString.Char8    (unpack)
 import           Data.Conduit.Process     (ClosedStream (..), streamingProcess,
                                            proc, waitForStreamingProcess)
 import qualified Data.Foldable            as F
@@ -28,11 +29,6 @@ filterInput idx = (filterInputC idx =$)
 multiSink_ :: (Monad m) => [Sink a m ()] -> Sink (Int, a) m ()
 multiSink_ = getZipSink . F.sequenceA_ . fmap ZipSink
              . zipWith filterInput [0..]
-
--- | A testing sink that just prints its input, marking it with
--- a given prefix.
-testSink :: String -> Sink String IO ()
-testSink prefix = CL.mapM_ (putStrLn . (prefix ++))
 
 lengthMap :: (Monad m) => Conduit String m Int
 lengthMap = CL.map length
@@ -69,9 +65,9 @@ parse cmds   = do
 
         output = fromProcess
             $$ CB.lines
-						=$ CL.map show
-						=$ splitLoop
-						=$ multiSink_ [(testSink "orig:"), (lengthMap $= lengthSum $= lengthSink)]
+            =$ CL.map unpack
+            =$ splitLoop
+            =$ multiSink_ [CL.mapM_ putStrLn, (lengthMap $= lengthSum $= lengthSink)]
 
         splitLoop = do
             mbs <- await
