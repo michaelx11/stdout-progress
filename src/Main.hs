@@ -57,8 +57,7 @@ parse ("-b":nb:cmds)     = putStrLn $ show nb
                         
 parse cmds   = do
     ((toProcess, close), fromProcess, fromStderr, cph) <-
-        streamingProcess (proc "ls" [])
---        streamingProcess (proc (head cmds) (tail cmds))
+        streamingProcess (proc (head cmds) (tail cmds))
 
     let input = CB.sourceHandle stdin
              $$ CB.lines
@@ -68,7 +67,9 @@ parse cmds   = do
         inputLoop = do
             close
         output = fromProcess
-            $$ splitLoop =$ multiSink_ [(testSink "orig:"), (lengthMap $= lengthSum $= lengthSink)]
+            $$ CL.map show
+						=$ splitLoop
+						=$ multiSink_ [(testSink "orig:"), (lengthMap $= lengthSum $= lengthSink)]
 
         splitLoop = do
             mbs <- await
