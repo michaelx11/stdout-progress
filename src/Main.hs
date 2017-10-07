@@ -38,35 +38,27 @@ testSink :: String -> Sink String IO ()
 testSink prefix = C.mapM_ (putStrLn . (prefix ++))
 
 -- | An example that produces indexed output.
-testSource :: (Monad m) => Source m (Int, String)
+testSource :: (Monad m) => Source m (String)
 testSource = do
---    yield "test"
---    yield "what"
-    yield (0, "abc")
-    yield (0, "def")
-    yield (1, "opq")
-    yield (0, "0")
-    yield (1, "1")
-    yield (2, "rest")
---         output = fromProcess
---             $$ CB.lines
---             =$ countLoop
---             =$ CB.sinkHandle stdout
--- 
---         countLoop = do
---             mbs <- await
---             case mbs of
---                 Nothing -> do
---                     yield "yo"
---                     yield "\n"
---                 Just bs -> do
---                     yield bs
---                     yield "\n"
---                     countLoop
+    yield "test"
+    yield "what"
 
 main :: IO ()
 main = do
-    testSource $$ multiSink_ (map testSink ["1: ", "2: ", "3: "])
+    let countLoop = do
+            mbs <- await
+            case mbs of
+                Nothing -> do
+                    yield (0, "yo")
+                Just bs -> do
+                    yield (0, bs)
+                    yield (1, bs)
+                    yield (2, bs)
+                    countLoop
+
+    testSource
+      $$ countLoop
+      =$ multiSink_ (map testSink ["1: ", "2: ", "3: "])
 -- main = getArgs >>= parse 
 -- 
 -- parse ["-h"] = usage   >> exit
