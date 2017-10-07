@@ -87,7 +87,7 @@ parse cmds   = do
         Concurrently errout *>
         Concurrently (waitForStreamingProcess cph)
 
-    putStrLn $ "Process exit code: " ++ show ec
+    return ()
 
 usage   = putStrLn "Usage: stdout-progress [-vh] [-b num bytes] [cmd ... args]"
 version = putStrLn "stdout-progress 0.1"
