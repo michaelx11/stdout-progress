@@ -66,8 +66,10 @@ parse cmds   = do
 
         inputLoop = do
             close
+
         output = fromProcess
-            $$ CL.map show
+            $$ CB.lines
+						=$ CL.map show
 						=$ splitLoop
 						=$ multiSink_ [(testSink "orig:"), (lengthMap $= lengthSum $= lengthSink)]
 
