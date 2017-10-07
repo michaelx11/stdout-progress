@@ -30,6 +30,11 @@ multiSink_ :: (Monad m) => [Sink a m ()] -> Sink (Int, a) m ()
 multiSink_ = getZipSink . F.sequenceA_ . fmap ZipSink
              . zipWith filterInput [0..]
 
+-- | A testing sink that just prints its input, marking it with
+-- a given prefix.
+testSink :: String -> Sink String IO ()
+testSink prefix = CL.mapM_ (putStrLn . (prefix ++))
+
 lengthMap :: (Monad m) => Conduit String m Int
 lengthMap = CL.map length
 
@@ -67,7 +72,7 @@ parse cmds   = do
             $$ CB.lines
             =$ CL.map unpack
             =$ splitLoop
-            =$ multiSink_ [CL.mapM_ putStrLn, (lengthMap $= lengthSum $= lengthSink)]
+            =$ multiSink_ [(testSink "stdout: "), (lengthMap $= lengthSum $= lengthSink)]
 
         splitLoop = do
             mbs <- await
@@ -79,7 +84,7 @@ parse cmds   = do
                     splitLoop
 
         errout = fromStderr $$ CL.mapM_
-            (\bs -> putStrLn $ "from stderr: " ++ show bs)
+            (\bs -> putStrLn $ "stderr: " ++ show bs)
 
     ec <- runConcurrently $
         Concurrently input *>
