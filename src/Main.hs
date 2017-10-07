@@ -37,28 +37,36 @@ multiSink_ = getZipSink . F.sequenceA_ . fmap ZipSink
 testSink :: String -> Sink String IO ()
 testSink prefix = C.mapM_ (putStrLn . (prefix ++))
 
+lengthMap :: (Monad m) => Conduit String m Int
+lengthMap = C.map length
+
+-- lengthReduction :: (Monad m) => Conduit String m Int
+-- lengthReduction = C.fold length
+
+lengthSink :: Sink Int IO ()
+lengthSink = C.mapM_ (putStrLn . show)
+
 -- | An example that produces indexed output.
 testSource :: (Monad m) => Source m (String)
 testSource = do
     yield "test"
     yield "what"
+    yield "sup"
 
 main :: IO ()
 main = do
     let countLoop = do
             mbs <- await
             case mbs of
-                Nothing -> do
-                    yield (0, "yo")
+                Nothing -> return ()
                 Just bs -> do
                     yield (0, bs)
                     yield (1, bs)
-                    yield (2, bs)
                     countLoop
 
     testSource
       $$ countLoop
-      =$ multiSink_ (map testSink ["1: ", "2: ", "3: "])
+      =$ multiSink_ [(testSink "orig:"), (lengthMap $= lengthSink)]
 -- main = getArgs >>= parse 
 -- 
 -- parse ["-h"] = usage   >> exit
