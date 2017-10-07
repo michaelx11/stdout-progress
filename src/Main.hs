@@ -12,6 +12,8 @@ import qualified Data.Foldable            as F
 import           System.IO                (stdin, stdout)
 import           System.Environment
 import           System.Exit
+import           Text.Printf
+import           Text.Read
 
 main :: IO ()
 main = getArgs >>= parse
@@ -43,7 +45,7 @@ lengthSum = do
     let loop currSum = do
             item <- await
             case item of
-                Nothing -> yield ("Total Bytes: " ++ (show currSum))
+                Nothing -> yield ("\n\nTotal Bytes: " ++ (show currSum))
                 Just val -> do
                     loop $ currSum + val
     loop 0 
@@ -54,7 +56,49 @@ lengthSink = CL.mapM_ putStrLn
 parse ["-h"] = usage   >> exit
 parse ["-v"] = version >> exit
 parse []     = usage >> exit
-parse ("-b":nb:cmds)     = putStrLn $ show nb
+parse ("-b":nb:cmds)     = do
+    let maybeInt = readMaybe nb :: Maybe Int
+    case maybeInt of
+        Nothing -> putStrLn ("Invalid byte count: " ++ nb) >> exit
+        Just numBytes  -> do
+            ((toProcess, close), fromProcess, fromStderr, cph) <-
+                streamingProcess (proc (head cmds) (tail cmds))
+     
+            let input = CB.sourceHandle stdin
+                     $$ CB.lines
+                     =$ inputLoop
+                     =$ toProcess
+     
+                inputLoop = do
+                    close
+     
+                output = fromProcess
+                    $$ CB.lines
+                    =$ CL.map unpack
+                    =$ progressLoop 0
+                    =$ CL.mapM_ (\bs -> (printf "%s" bs))
+
+     
+                progressLoop currentBytes = do
+                    line <- await
+                    case line of
+                        Nothing -> yield "\n"
+                        Just actualLine -> do
+--                            yield actualLine
+                            yield $ "\r" ++ (show ((quot currentBytes numBytes) * 100)) ++ " %"
+--                            yield $ actualLine ++ "\n"
+                            progressLoop $ ((length actualLine) + currentBytes)
+     
+                errout = fromStderr $$ CL.mapM_
+                    (\bs -> putStrLn $ "stderr: " ++ show bs)
+     
+            ec <- runConcurrently $
+                Concurrently input *>
+                Concurrently output *>
+                Concurrently errout *>
+                Concurrently (waitForStreamingProcess cph)
+     
+            return ()
                         
 parse cmds   = do
     ((toProcess, close), fromProcess, fromStderr, cph) <-
