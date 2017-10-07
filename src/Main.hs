@@ -1,22 +1,23 @@
 {-# LANGUAGE OverloadedStrings #-}
-
-module Main where
-
 import           Control.Applicative      ((*>))
 import           Control.Concurrent.Async (Concurrently (..))
-import           Data.Conduit
-import qualified Data.Conduit.List as C
+import           Data.Conduit             as C
 import qualified Data.Conduit.Binary      as CB
-import qualified Data.Foldable as F
+import qualified Data.Conduit.List        as CL
+import 					 Data.ByteString.Internal
 import           Data.Conduit.Process     (ClosedStream (..), streamingProcess,
                                            proc, waitForStreamingProcess)
+import qualified Data.Foldable            as F
 import           System.IO                (stdin, stdout)
 import           System.Environment
 import           System.Exit
 
+main :: IO ()
+main = getArgs >>= parse
+
 -- | Filter only pairs tagged with the appropriate key.
 filterInputC :: (Monad m, Eq k) => k -> Conduit (k, a) m a
-filterInputC idx = C.filter ((idx ==) . fst) =$= C.map snd
+filterInputC idx = CL.filter ((idx ==) . fst) =$= CL.map snd
 
 -- | Prepend a given sink with a filter.
 filterInput :: (Monad m, Eq k) => k -> Sink a m r -> Sink (k, a) m r
@@ -31,10 +32,10 @@ multiSink_ = getZipSink . F.sequenceA_ . fmap ZipSink
 -- | A testing sink that just prints its input, marking it with
 -- a given prefix.
 testSink :: String -> Sink String IO ()
-testSink prefix = C.mapM_ (putStrLn . (prefix ++))
+testSink prefix = CL.mapM_ (putStrLn . (prefix ++))
 
 lengthMap :: (Monad m) => Conduit String m Int
-lengthMap = C.map length
+lengthMap = CL.map length
 
 lengthSum :: (Monad m) => Conduit Int m String
 lengthSum = do
@@ -47,9 +48,7 @@ lengthSum = do
     loop 0 
 
 lengthSink :: Sink String IO ()
-lengthSink = C.mapM_ putStrLn
-
-main = getArgs >>= parse 
+lengthSink = CL.mapM_ putStrLn
 
 parse ["-h"] = usage   >> exit
 parse ["-v"] = version >> exit
@@ -80,7 +79,7 @@ parse cmds   = do
                     yield (1, bs)
                     splitLoop
 
-        errout = fromStderr $$ C.mapM_
+        errout = fromStderr $$ CL.mapM_
             (\bs -> putStrLn $ "from stderr: " ++ show bs)
 
     ec <- runConcurrently $
