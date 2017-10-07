@@ -5,15 +5,14 @@ module Main where
 import           Control.Applicative      ((*>))
 import           Control.Concurrent.Async (Concurrently (..))
 import           Data.Conduit
---import           Data.Conduit             (await, yield, ($$), (=$), Sink, Conduit, ($=), (=$=), getZipSink, ZipSink)
+import qualified Data.Conduit.List as C
 import qualified Data.Conduit.Binary      as CB
+import qualified Data.Foldable as F
 import           Data.Conduit.Process     (ClosedStream (..), streamingProcess,
                                            proc, waitForStreamingProcess)
 import           System.IO                (stdin, stdout)
 import           System.Environment
 import           System.Exit
-import qualified Data.Conduit.List as C
-import qualified Data.Foldable as F
 
 -- | Filter only pairs tagged with the appropriate key.
 filterInputC :: (Monad m, Eq k) => k -> Conduit (k, a) m a
@@ -50,13 +49,6 @@ lengthSum = do
 lengthSink :: Sink String IO ()
 lengthSink = C.mapM_ putStrLn
 
--- -- | An example that produces indexed output.
--- testSource :: (Monad m) => Source m (String)
--- testSource = do
---     yield "test"
---     yield "what"
---     yield "sup"
-
 main = getArgs >>= parse 
 
 parse ["-h"] = usage   >> exit
@@ -76,16 +68,6 @@ parse cmds   = do
 
         inputLoop = do
             close
---            mbs <- await
---            case mbs of
---                Nothing -> close
---                Just "quit" -> close
---                Just bs -> do
---                    yield bs
---                    inputLoop
-
---        output = fromProcess $$ CL.mapM_
---            (\bs -> putStrLn $ "from process: " ++ show bs)
         output = fromProcess
             $$ splitLoop =$ multiSink_ [(testSink "orig:"), (lengthMap $= lengthSum $= lengthSink)]
 
