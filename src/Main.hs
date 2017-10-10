@@ -84,9 +84,7 @@ parse ("-b":nb:cmds)     = do
                     case line of
                         Nothing -> yield "\n"
                         Just actualLine -> do
---                            yield actualLine
-                            yield $ "\r" ++ (show (quot (currentBytes * 100) numBytes)) ++ " %"
---                            yield $ actualLine ++ "\n"
+                            yield $ "\r" ++ (show (quot (currentBytes * 100) numBytes)) ++ "%: " ++ actualLine ++ "\n"
                             progressLoop $ ((length actualLine) + currentBytes)
      
                 errout = fromStderr $$ CL.mapM_
