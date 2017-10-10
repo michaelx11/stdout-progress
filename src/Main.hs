@@ -6,8 +6,7 @@ import qualified Data.Conduit.Binary      as CB
 import qualified Data.Conduit.List        as CL
 import           Data.ByteString.Internal
 import           Data.ByteString.Char8    (unpack)
-import           Data.Conduit.Process     (ClosedStream (..), streamingProcess,
-                                           proc, waitForStreamingProcess)
+import           Data.Conduit.Process
 import qualified Data.Foldable            as F
 import           System.IO                (stdin, stdout)
 import           System.Environment
@@ -61,18 +60,10 @@ parse ("-b":nb:cmds)     = do
     case maybeInt of
         Nothing -> putStrLn ("Invalid byte count: " ++ nb) >> exit
         Just numBytes  -> do
-            ((toProcess, close), fromProcess, fromStderr, cph) <-
+            (Inherited, fromProcess, fromStderr, cph) <-
                 streamingProcess (proc (head cmds) (tail cmds))
      
-            let input = CB.sourceHandle stdin
-                     $$ CB.lines
-                     =$ inputLoop
-                     =$ toProcess
-     
-                inputLoop = do
-                    close
-     
-                output = fromProcess
+            let output = fromProcess
                     $$ CB.lines
                     =$ CL.map unpack
                     =$ progressLoop 0
@@ -84,14 +75,13 @@ parse ("-b":nb:cmds)     = do
                     case line of
                         Nothing -> yield "\n"
                         Just actualLine -> do
-                            yield $ "\r" ++ (show (quot (currentBytes * 100) numBytes)) ++ "%: " ++ actualLine ++ "\n"
+                            yield $ (show (quot (currentBytes * 100) numBytes)) ++ "%: " ++ actualLine ++ "\n"
                             progressLoop $ ((length actualLine) + currentBytes)
      
                 errout = fromStderr $$ CL.mapM_
                     (\bs -> putStrLn $ "stderr: " ++ show bs)
      
             ec <- runConcurrently $
-                Concurrently input *>
                 Concurrently output *>
                 Concurrently errout *>
                 Concurrently (waitForStreamingProcess cph)
@@ -99,18 +89,10 @@ parse ("-b":nb:cmds)     = do
             return ()
                         
 parse cmds   = do
-    ((toProcess, close), fromProcess, fromStderr, cph) <-
+    (Inherited, fromProcess, fromStderr, cph) <-
         streamingProcess (proc (head cmds) (tail cmds))
 
-    let input = CB.sourceHandle stdin
-             $$ CB.lines
-             =$ inputLoop
-             =$ toProcess
-
-        inputLoop = do
-            close
-
-        output = fromProcess
+    let output = fromProcess
             $$ CB.lines
             =$ CL.map unpack
             =$ splitLoop
@@ -129,7 +111,6 @@ parse cmds   = do
             (\bs -> putStrLn $ "stderr: " ++ show bs)
 
     ec <- runConcurrently $
-        Concurrently input *>
         Concurrently output *>
         Concurrently errout *>
         Concurrently (waitForStreamingProcess cph)
