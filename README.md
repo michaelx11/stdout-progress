@@ -2,6 +2,8 @@
 
 Simple command-line utility to measure progress of common long running tasks.
 
+This was an educational project so code may be heavily borrowed from examples.
+
 ## Usage
 
 Initial measurement:
