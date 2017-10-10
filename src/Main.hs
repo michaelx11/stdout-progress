@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-import           Debug.Trace
 import           Control.Applicative      ((*>))
 import           Control.Concurrent.Async (Concurrently (..))
 import           Data.Conduit             as C
@@ -48,7 +47,7 @@ lengthSum = do
             case item of
                 Nothing -> yield ("\n\nTotal Bytes: " ++ (show currSum))
                 Just val -> do
-                    trace "calling lengthsum" (loop $ currSum + val)
+                    loop $ currSum + val
     loop 0 
 
 lengthSink :: Sink String IO ()
@@ -124,9 +123,9 @@ parse cmds   = do
             case mbs of
                 Nothing -> return ()
                 Just bs -> do
-                    trace ("calling yield " ++ (show bs)) yield (0, bs)
+                    yield (0, bs)
                     yield (1, bs)
-                    trace "calling splitLoop" splitLoop
+                    splitLoop
 
         errout = fromStderr $$ CL.mapM_
             (\bs -> putStrLn $ "stderr: " ++ show bs)
